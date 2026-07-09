@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>倫理法人会 音楽再生アプリ</title>
+<style>
+  :root{
+    --bg1:#1b2a4a; --bg2:#0f1b30; --card:#ffffff; --accent:#c9a24b; --accent-dark:#a9822f;
+    --text:#1c2333; --sub:#6b7280; --danger:#c0392b; --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    min-height:100vh;
+    color:var(--text);
+    padding:16px;
+  }
+  .app{max-width:480px;margin:0 auto;}
+  header{text-align:center;margin:8px 0 20px;}
+  header h1{color:#fff;font-size:1.3rem;margin:0;font-weight:700;letter-spacing:.02em;}
+  header .date{color:#c9d3e6;font-size:.8rem;margin-top:4px;}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.18);
+  }
+  .card h2{font-size:1rem;margin:0 0 10px;color:var(--text);}
+  .auto-note{font-size:.82rem;color:var(--sub);margin:0 0 12px;background:#f4f1e8;border-radius:10px;padding:8px 10px;}
+  .segmented{display:flex;gap:6px;margin-bottom:14px;}
+  .seg-btn{
+    flex:1;padding:10px 4px;border:1px solid #ddd;background:#fafafa;border-radius:10px;
+    font-size:.78rem;color:var(--sub);cursor:pointer;
+  }
+  .seg-btn.active{background:var(--accent);border-color:var(--accent-dark);color:#fff;font-weight:600;}
+  .track-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .track-row>span:first-child{font-weight:600;font-size:.95rem;}
+  .mode-toggle{display:flex;gap:4px;background:#f0f0f0;border-radius:10px;padding:3px;}
+  .mode-btn{border:none;background:transparent;padding:6px 10px;font-size:.75rem;border-radius:8px;color:var(--sub);cursor:pointer;}
+  .mode-btn.active{background:#2c3e6b;color:#fff;font-weight:600;}
+  .play-btn{
+    width:100%;padding:16px;border:none;border-radius:12px;
+    background:#2c3e6b;color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer;
+  }
+  .play-btn:active{background:#1c2a4d;}
+  .nowplaying-card{
+    display:flex;flex-direction:column;gap:10px;
+    background:#2c3e6b;color:#fff;
+  }
+  .np-label{font-size:.72rem;color:#c9d3e6;letter-spacing:.05em;}
+  .np-title{font-size:1.15rem;font-weight:700;margin:2px 0 6px;}
+  .np-time{font-size:.75rem;color:#c9d3e6;margin-bottom:4px;}
+  #npSeek{width:100%;}
+  .stop-btn{
+    width:100%;padding:14px;border:none;border-radius:12px;
+    background:var(--danger);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;
+  }
+  .settings-toggle{
+    width:100%;text-align:left;background:none;border:none;font-size:.95rem;font-weight:700;
+    padding:4px 0;cursor:pointer;color:var(--text);
+  }
+  .settings-body{margin-top:14px;}
+  .settings-body h3{font-size:.85rem;color:var(--sub);margin:16px 0 8px;}
+  .settings-body h3:first-child{margin-top:0;}
+  .switch-row,.number-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:.9rem;}
+  .number-row input[type=number]{width:64px;padding:6px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;}
+  input[type=checkbox]{width:20px;height:20px;}
+  .vol-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.85rem;}
+  .vol-row>span:first-child{width:96px;flex-shrink:0;}
+  .vol-row input[type=range]{flex:1;}
+  .vol-value{width:42px;text-align:right;color:var(--sub);}
+  .reset-btn{
+    margin-top:8px;width:100%;padding:10px;border:1px solid #ddd;background:#fafafa;
+    border-radius:10px;color:var(--sub);font-size:.85rem;cursor:pointer;
+  }
+  footer{margin-top:6px;text-align:center;}
+  .hint{color:#c9d3e6;font-size:.72rem;line-height:1.5;padding:0 8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🎵 倫理法人会 音楽再生アプリ</h1>
+    <div class="date" id="todayLabel"></div>
+  </header>
+
+  <section class="card">
+    <h2>① 会歌</h2>
+    <p class="auto-note" id="autoNote"></p>
+    <div class="segmented" id="anthemModeSelect">
+      <button type="button" class="seg-btn" data-value="auto">自動</button>
+      <button type="button" class="seg-btn" data-value="yumeKagirinaku">夢かぎりなく</button>
+      <button type="button" class="seg-btn" data-value="yumeHateshinaku">夢はてしなく</button>
+    </div>
+    <div class="track-row">
+      <span id="anthemTrackName">-</span>
+      <div class="mode-toggle" data-group="anthem">
+        <button type="button" class="mode-btn" data-mode="single">単曲</button>
+        <button type="button" class="mode-btn" data-mode="repeat">リピート</button>
+      </div>
+    </div>
+    <button type="button" class="play-btn" id="anthemPlayBtn">▶ 会歌を再生</button>
+  </section>
+
+  <section class="card">
+    <h2>② 式典BGM（日本創生の詩）</h2>
+    <div class="track-row">
+      <span>日本創生の詩</span>
+      <div class="mode-toggle" data-group="bgm">
+        <button type="button" class="mode-btn" data-mode="single">単曲</button>
+        <button type="button" class="mode-btn" data-mode="repeat">リピート</button>
+      </div>
+    </div>
+    <button type="button" class="play-btn" id="bgmPlayBtn">▶ BGMを再生</button>
+  </section>
+
+  <section class="card nowplaying-card" id="nowPlayingCard" style="display:none;">
+    <div class="np-info">
+      <div class="np-label">再生中</div>
+      <div class="np-title" id="npTitle">-</div>
+      <div class="np-time"><span id="npCurrent">0:00</span> / <span id="npDuration">0:00</span></div>
+      <input type="range" id="npSeek" min="0" max="1000" value="0">
+    </div>
+    <button type="button" class="stop-btn" id="stopBtn">⏹ 停止</button>
+  </section>
+
+  <section class="card">
+    <button type="button" class="settings-toggle" id="settingsToggle">⚙ 詳細設定 ▾</button>
+    <div class="settings-body" id="settingsBody" style="display:none;">
+      <h3>フェードアウト</h3>
+      <label class="switch-row">
+        <span>停止時にフェードアウトする</span>
+        <input type="checkbox" id="fadeEnabled">
+      </label>
+      <label class="number-row">
+        <span>フェードアウト秒数</span>
+        <span><input type="number" id="fadeSeconds" min="1" max="30" step="1"> 秒</span>
+      </label>
+
+      <h3>曲ごとの音量</h3>
+      <div class="vol-row" data-file="01 夢かぎりなく.mp3">
+        <span>夢かぎりなく</span>
+        <input type="range" min="0" max="100" class="vol-slider">
+        <span class="vol-value">100%</span>
+      </div>
+      <div class="vol-row" data-file="02 夢はてしなく.mp3">
+        <span>夢はてしなく</span>
+        <input type="range" min="0" max="100" class="vol-slider">
+        <span class="vol-value">100%</span>
+      </div>
+      <div class="vol-row" data-file="03 日本創生の詩.mp3">
+        <span>日本創生の詩</span>
+        <input type="range" min="0" max="100" class="vol-slider">
+        <span class="vol-value">50%</span>
+      </div>
+
+      <button type="button" class="reset-btn" id="resetBtn">設定をリセット</button>
+    </div>
+  </section>
+
+  <footer>
+    <p class="hint">Bluetoothスピーカーは事前にお使いの端末側で接続しておいてください。接続済みならこのアプリの音声は自動的にそちらから再生されます。</p>
+  </footer>
+</div>
+
+<audio id="player" preload="none"></audio>
+
+<script>
+(function(){
+  "use strict";
+
+  var TRACKS = {
+    yumeKagirinaku:  { file: "01 夢かぎりなく.mp3", label: "夢かぎりなく" },
+    yumeHateshinaku: { file: "02 夢はてしなく.mp3", label: "夢はてしなく" },
+    nipponSousei:    { file: "03 日本創生の詩.mp3",  label: "日本創生の詩" }
+  };
+
+  var DEFAULT_VOLUMES = {
+    "01 夢かぎりなく.mp3": 100,
+    "02 夢はてしなく.mp3": 100,
+    "03 日本創生の詩.mp3": 50
+  };
+
+  var DEFAULT_MODES = { anthem: "single", bgm: "repeat" };
+  var STORAGE_KEY = "rinriPlayerSettings_v1";
+
+  function loadSettings(){
+    var raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch(e){}
+    var s = {};
+    try { s = raw ? JSON.parse(raw) : {}; } catch(e){ s = {}; }
+    s.volumes = Object.assign({}, DEFAULT_VOLUMES, s.volumes || {});
+    s.modes = Object.assign({}, DEFAULT_MODES, s.modes || {});
+    s.fadeEnabled = (typeof s.fadeEnabled === "boolean") ? s.fadeEnabled : true;
+    s.fadeSeconds = s.fadeSeconds || 5;
+    s.anthemOverride = s.anthemOverride || "auto";
+    return s;
+  }
+
+  var settings = loadSettings();
+  function saveSettings(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch(e){}
+  }
+
+  var audio = document.getElementById("player");
+  var currentGroup = null;
+  var currentFile = null;
+  var fadeTimer = null;
+
+  // ---------- 会歌の自動判定 ----------
+  function getAutoAnthemKey(){
+    var month = new Date().getMonth() + 1;
+    return (month % 2 === 1) ? "yumeHateshinaku" : "yumeKagirinaku";
+  }
+  function getCurrentAnthemKey(){
+    if (settings.anthemOverride === "auto") return getAutoAnthemKey();
+    return settings.anthemOverride;
+  }
+  function updateAnthemDisplay(){
+    var month = new Date().getMonth() + 1;
+    var autoKey = getAutoAnthemKey();
+    var oddEven = (month % 2 === 1) ? "奇数月" : "偶数月";
+    document.getElementById("autoNote").textContent =
+      "現在" + month + "月（" + oddEven + "） → 自動選択: " + TRACKS[autoKey].label;
+    document.getElementById("anthemTrackName").textContent = TRACKS[getCurrentAnthemKey()].label;
+
+    var buttons = document.querySelectorAll("#anthemModeSelect .seg-btn");
+    buttons.forEach(function(btn){
+      btn.classList.toggle("active", btn.dataset.value === settings.anthemOverride);
+    });
+  }
+
+  document.querySelectorAll("#anthemModeSelect .seg-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      settings.anthemOverride = btn.dataset.value;
+      saveSettings();
+      updateAnthemDisplay();
+    });
+  });
+
+  // ---------- 再生モード（単曲 / リピート） ----------
+  function updateModeButtons(){
+    document.querySelectorAll(".mode-toggle").forEach(function(group){
+      var g = group.dataset.group;
+      group.querySelectorAll(".mode-btn").forEach(function(btn){
+        btn.classList.toggle("active", btn.dataset.mode === settings.modes[g]);
+      });
+    });
+  }
+  document.querySelectorAll(".mode-toggle").forEach(function(group){
+    var g = group.dataset.group;
+    group.querySelectorAll(".mode-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        settings.modes[g] = btn.dataset.mode;
+        saveSettings();
+        updateModeButtons();
+        if (currentGroup === g) { audio.loop = (settings.modes[g] === "repeat"); }
+      });
+    });
+  });
+
+  // ---------- 再生 / 停止 ----------
+  function formatTime(sec){
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function showNowPlaying(label){
+    document.getElementById("npTitle").textContent = label;
+    document.getElementById("nowPlayingCard").style.display = "flex";
+  }
+  function hideNowPlaying(){
+    document.getElementById("nowPlayingCard").style.display = "none";
+    currentGroup = null;
+    currentFile = null;
+  }
+
+  function playByKey(trackKey, group){
+    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    var track = TRACKS[trackKey];
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = encodeURI(track.file);
+    var vol = (settings.volumes[track.file] !== undefined) ? settings.volumes[track.file] : 100;
+    audio.volume = vol / 100;
+    audio.loop = (settings.modes[group] === "repeat");
+    currentGroup = group;
+    currentFile = track.file;
+    var p = audio.play();
+    if (p && p.catch) {
+      p.catch(function(err){
+        console.error(err);
+        alert("再生できませんでした。もう一度ボタンを押してください。");
+      });
+    }
+    showNowPlaying(track.label);
+  }
+
+  function fadeOutAndStop(seconds, onDone){
+    var originalVolume = audio.volume;
+    var steps = Math.max(10, Math.round(seconds * 10));
+    var stepTime = (seconds * 1000) / steps;
+    var i = 0;
+    fadeTimer = setInterval(function(){
+      i++;
+      audio.volume = Math.max(originalVolume * (1 - i / steps), 0);
+      if (i >= steps) {
+        clearInterval(fadeTimer);
+        fadeTimer = null;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = originalVolume;
+        if (onDone) onDone();
+      }
+    }, stepTime);
+  }
+
+  document.getElementById("anthemPlayBtn").addEventListener("click", function(){
+    playByKey(getCurrentAnthemKey(), "anthem");
+  });
+  document.getElementById("bgmPlayBtn").addEventListener("click", function(){
+    playByKey("nipponSousei", "bgm");
+  });
+  document.getElementById("stopBtn").addEventListener("click", function(){
+    if (settings.fadeEnabled) {
+      fadeOutAndStop(settings.fadeSeconds, hideNowPlaying);
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+      hideNowPlaying();
+    }
+  });
+
+  audio.addEventListener("ended", function(){
+    if (!audio.loop) hideNowPlaying();
+  });
+
+  // ---------- 進捗バー ----------
+  var seekEl = document.getElementById("npSeek");
+  var seeking = false;
+  audio.addEventListener("timeupdate", function(){
+    document.getElementById("npCurrent").textContent = formatTime(audio.currentTime);
+    if (audio.duration && !seeking) {
+      seekEl.value = Math.round((audio.currentTime / audio.duration) * 1000);
+    }
+  });
+  audio.addEventListener("loadedmetadata", function(){
+    document.getElementById("npDuration").textContent = formatTime(audio.duration);
+  });
+  seekEl.addEventListener("input", function(){ seeking = true; });
+  seekEl.addEventListener("change", function(){
+    if (audio.duration) {
+      audio.currentTime = (seekEl.value / 1000) * audio.duration;
+    }
+    seeking = false;
+  });
+
+  // ---------- 詳細設定 ----------
+  var settingsToggle = document.getElementById("settingsToggle");
+  var settingsBody = document.getElementById("settingsBody");
+  settingsToggle.addEventListener("click", function(){
+    var open = settingsBody.style.display !== "none";
+    settingsBody.style.display = open ? "none" : "block";
+    settingsToggle.textContent = open ? "⚙ 詳細設定 ▾" : "⚙ 詳細設定 ▴";
+  });
+
+  var fadeEnabledEl = document.getElementById("fadeEnabled");
+  var fadeSecondsEl = document.getElementById("fadeSeconds");
+  fadeEnabledEl.addEventListener("change", function(){
+    settings.fadeEnabled = fadeEnabledEl.checked;
+    saveSettings();
+  });
+  fadeSecondsEl.addEventListener("change", function(){
+    var v = parseInt(fadeSecondsEl.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > 30) v = 30;
+    fadeSecondsEl.value = v;
+    settings.fadeSeconds = v;
+    saveSettings();
+  });
+
+  document.querySelectorAll(".vol-row").forEach(function(row){
+    var file = row.dataset.file;
+    var slider = row.querySelector(".vol-slider");
+    var valueLabel = row.querySelector(".vol-value");
+    slider.addEventListener("input", function(){
+      var v = parseInt(slider.value, 10);
+      valueLabel.textContent = v + "%";
+      settings.volumes[file] = v;
+      saveSettings();
+      if (currentFile === file) { audio.volume = v / 100; }
+    });
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if (confirm("設定をすべて初期値に戻します。よろしいですか？")) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+      location.reload();
+    }
+  });
+
+  // ---------- 初期化 ----------
+  function init(){
+    var today = new Date();
+    document.getElementById("todayLabel").textContent =
+      today.getFullYear() + "年" + (today.getMonth()+1) + "月" + today.getDate() + "日";
+
+    fadeEnabledEl.checked = settings.fadeEnabled;
+    fadeSecondsEl.value = settings.fadeSeconds;
+
+    document.querySelectorAll(".vol-row").forEach(function(row){
+      var file = row.dataset.file;
+      var slider = row.querySelector(".vol-slider");
+      var valueLabel = row.querySelector(".vol-value");
+      var v = (settings.volumes[file] !== undefined) ? settings.volumes[file] : 100;
+      slider.value = v;
+      valueLabel.textContent = v + "%";
+    });
+
+    updateAnthemDisplay();
+    updateModeButtons();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
