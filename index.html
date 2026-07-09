@@ -211,6 +211,40 @@
   var currentFile = null;
   var fadeTimer = null;
 
+  // ---------- 音量制御（Web Audio API） ----------
+  // iOS Safariは audio.volume をJSから変更しても実際の音量に反映されない
+  // （ハードウェアの音量ボタンでしか音量が変わらない仕様）ため、
+  // GainNodeを使って音量・フェードアウトを制御する。
+  var audioCtx = null;
+  var gainNode = null;
+  var graphReady = false;
+
+  function ensureAudioGraph(){
+    if (graphReady) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+      var sourceNode = audioCtx.createMediaElementSource(audio);
+      gainNode = audioCtx.createGain();
+      sourceNode.connect(gainNode).connect(audioCtx.destination);
+      graphReady = true;
+    } catch (e) {
+      console.error("Web Audio init failed", e);
+    }
+  }
+
+  function setVolume(v){
+    if (gainNode) {
+      gainNode.gain.value = v;
+    } else {
+      audio.volume = v;
+    }
+  }
+  function getVolume(){
+    return gainNode ? gainNode.gain.value : audio.volume;
+  }
+
   // ---------- 会歌の自動判定 ----------
   function getAutoAnthemKey(){
     var month = new Date().getMonth() + 1;
@@ -283,6 +317,8 @@
 
   function playByKey(trackKey, group){
     if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    ensureAudioGraph();
+    if (audioCtx && audioCtx.state === "suspended") { audioCtx.resume(); }
     var track = TRACKS[trackKey];
     audio.pause();
     audio.src = encodeURI(track.file);
@@ -291,8 +327,9 @@
     // 毎回まっさらな状態からやり直す。
     audio.load();
     audio.currentTime = 0;
+    audio.volume = 1;
     var vol = (settings.volumes[track.file] !== undefined) ? settings.volumes[track.file] : 100;
-    audio.volume = vol / 100;
+    setVolume(vol / 100);
     audio.loop = (settings.modes[group] === "repeat");
     currentGroup = group;
     currentFile = track.file;
@@ -307,19 +344,19 @@
   }
 
   function fadeOutAndStop(seconds, onDone){
-    var originalVolume = audio.volume;
+    var originalVolume = getVolume();
     var steps = Math.max(10, Math.round(seconds * 10));
     var stepTime = (seconds * 1000) / steps;
     var i = 0;
     fadeTimer = setInterval(function(){
       i++;
-      audio.volume = Math.max(originalVolume * (1 - i / steps), 0);
+      setVolume(Math.max(originalVolume * (1 - i / steps), 0));
       if (i >= steps) {
         clearInterval(fadeTimer);
         fadeTimer = null;
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = originalVolume;
+        setVolume(originalVolume);
         if (onDone) onDone();
       }
     }, stepTime);
@@ -398,7 +435,7 @@
       valueLabel.textContent = v + "%";
       settings.volumes[file] = v;
       saveSettings();
-      if (currentFile === file) { audio.volume = v / 100; }
+      if (currentFile === file) { setVolume(v / 100); }
     });
   });
 
