@@ -196,7 +196,7 @@
     s.volumes = Object.assign({}, DEFAULT_VOLUMES, s.volumes || {});
     s.modes = Object.assign({}, DEFAULT_MODES, s.modes || {});
     s.fadeEnabled = (typeof s.fadeEnabled === "boolean") ? s.fadeEnabled : true;
-    s.fadeSeconds = s.fadeSeconds || 5;
+    s.fadeSeconds = s.fadeSeconds || 3;
     s.anthemOverride = s.anthemOverride || "auto";
     return s;
   }
@@ -285,8 +285,12 @@
     if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
     var track = TRACKS[trackKey];
     audio.pause();
-    audio.currentTime = 0;
     audio.src = encodeURI(track.file);
+    // iOS Safariなど一部ブラウザで、停止後に同じ曲を再生しようとすると
+    // 内部状態が固まって再生できなくなることがあるため、明示的にload()して
+    // 毎回まっさらな状態からやり直す。
+    audio.load();
+    audio.currentTime = 0;
     var vol = (settings.volumes[track.file] !== undefined) ? settings.volumes[track.file] : 100;
     audio.volume = vol / 100;
     audio.loop = (settings.modes[group] === "repeat");
