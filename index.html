@@ -354,9 +354,12 @@
       if (i >= steps) {
         clearInterval(fadeTimer);
         fadeTimer = null;
+        setVolume(0);
         audio.pause();
         audio.currentTime = 0;
-        setVolume(originalVolume);
+        // 音量は次回再生時にplayByKey側で正しい値に設定し直すので、
+        // ここでは元の音量に戻さない（戻すと停止の瞬間に一瞬音量が
+        // 上がって聞こえてしまうことがあるため）。
         if (onDone) onDone();
       }
     }, stepTime);
